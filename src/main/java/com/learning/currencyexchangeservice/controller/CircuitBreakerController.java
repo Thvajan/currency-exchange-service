@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 
 @RestController
@@ -19,7 +20,8 @@ public class CircuitBreakerController {
 	String message;
 
 	@GetMapping("/random")
-	@Retry(name = "random", fallbackMethod = "fallbackResponse")
+//	@Retry(name = "random", fallbackMethod = "fallbackResponse")
+	@CircuitBreaker(name = "default", fallbackMethod = "fallbackResponse")
 	public String randomMethod() {
 		logger.info(message);
 		ResponseEntity<String> forEntity = new RestTemplate().getForEntity("http://localhost:801//random",
