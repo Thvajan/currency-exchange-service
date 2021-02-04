@@ -1,0 +1,39 @@
+MicroServces:
+Pros:
+	New Technology and Process Adaption
+	Language and platform agnostic
+	Dynamic Scaling
+	Faster Release cycles
+
+Challenges:
+	Deciding Service Boundary - Evolutionary process
+	Dynamic scaling - Having more or less instances of micro services based on traffic
+	Config management - Should be fully optimized
+	Visibility - Tracking a bug and health monitoring
+	Pack of cards - Single point of vulnerability should not be there. Proper fault tolerance required
+
+Spring Cloud:
+	Provides solution for common MS problems - Config Mgmt, Service Discovery, Circuit Breakers, Intelligent routing, micro-proxy,One-time tokens, distributed sessions, Control bus
+	Few Components:
+		Spring cloud config
+		Spring cloud Netflix
+		Spring cloud bus
+		Spring cloud cloud Foundry
+		Spring cloud cluster
+
+Configuration Management:
+	Spring cloud config server all configs of all Env of MS in a single location(GIT)
+	
+Load balancing:
+		Naming server(Eureka)
+		Ribbon(Client side load balancing)
+		Feign(Write easier Rest clients)
+		
+Visibility & MOnitoring:
+	Zipkin Distributed Tracing
+	Netflix API Gateway
+	
+Fault Tolerance:
+	Hystrix
+	
+Standardizing the Ports

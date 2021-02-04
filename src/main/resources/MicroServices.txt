@@ -1,0 +1,21 @@
+MicroServices(MS):
+
+Scalable & Modular
+In Monolith
+	-App specific problem solution
+	-Ex: Calling paymets from Cart
+	-Complexity is within the app
+In MS
+	-Generic problem solution
+	-Ex:Load Balancing
+	-Complexity between Microservices
+
+Patterns and Technologies in MS:
+		Patterns - Makes MicroServices work well together
+		Technologies - Libraries and Frameworks to Solve common problems
+
+	Service discovery is a pattern and Eureka helps on that.
+	
+Rest Vs MS:
+	Rest - simple SOA(Service Oriented Architechture) - Good for creating standalone utilities
+	MS - having a picture in mind before creating it for a specific purpose like an E-Commerce website

@@ -1,0 +1,122 @@
+Micro Service Implementation:
+	Spring cloud Load Balancer instead of Ribbon
+	Spring cloud Gateway instead of Zuul
+	Resilience4j instead of Hystrix
+	Docker to Containerize Microservices 
+	Kubernetes to Orchestrate all our Microservices
+	
+1. WebApplication - 1:
+	Create a simple Spring web project with a single controller - actuator, web cloud,spring-cloud-starter-config, dev tools
+	return a simple bean
+	Enable Spring to pick up the values for it from app.Properties file
+	Add post step 2:
+		spring.application.name=limits-service
+		spring.config.import=optional:configserver:http://localhost:8888
+
+2. spring-cloud-config-server Application:
+	Create a spring cloud server app project
+		-Add dependency - Config server
+		-Create a local git repo and add the desiredfile.properties file and add values to it
+		-Can create multiple property files for multiple envs like dev and qa with desiredfile-<environment name>.properties
+			Access with http://localhost:8888/<Git properties File Name>/environment name
+			In the accessing web apps, application.properties add active profile and cloud profile name:
+				spring.profiles.active=<profile_name>
+				spring.cloud.config.profile=<profile_name>
+				spring.cloud.config.name=limits-app (can be used to config name of the config file in Git Repo if its different than spring.application.name=appname)
+		-Commit the changes to Git local repo
+		-Config the spring cloud server app.properties with the 
+			spring.application.name=<desired name>
+			server.port=8888
+			spring.cloud.config.server.git.uri=file:///C:/Learning/CodeBase/MicroServices/git-localconfig-repo
+		-Test with:
+			http://localhost:8888/<Git properties File Name>/default
+			
+3. Run cloud config Server and then the app:
+	In logs:
+		2021-02-01 20:48:48.483  INFO 25520 --- [  restartedMain] o.s.b.context.config.ConfigDataLoader    : Fetching config from server at : http://localhost:8888
+		2021-02-01 20:48:48.484  INFO 25520 --- [  restartedMain] o.s.b.context.config.ConfigDataLoader    : Located environment: name=limits-service, profiles=[default], label=null, version=c5364735e3c6a53a2091a24c3dab2023aef528fa, state=null
+	
+Values in Application.properties of the web app using cloud config have lesser priority than configured cloud config properties file data
+
+4. WebApplication - 2:
+	Create a simple Spring web project with a single controller - actuator, web cloud,spring-cloud-starter-config, dev tools
+	create req bean and contoller method for same
+	add environment property in it
+	Get the port from autowiring spring  environment interface - get prop - "local.server.port"
+
+5. Feign Rest Client:
+	Makes it easy to call other Microservices
+	Add dependency - spring-cloud-starter-openfeign
+	Add @EnableFeignClients to the SpringBoot Application class
+	Create an interface as a proxy for the service we need to use and add @FeignClient(name="desiredservice_SpringAppname", url = "<machinename>:<port>")
+	Create the proxy method declaration for the targeted API method
+	This proxy can be autowired and used to call the added endpoint methods
+
+6. Service Registry\ Naming server: Using Eureka for Service Discovery
+		Add dependency - spring-cloud-starter-netflix-eureka-server
+		All Microservices instances would register with the service registry
+		Any microservice can ask the Service registry for the location of any registered microservice
+		Add @EnableEurekaServer to the SpringBoot Application class
+		Config for Eureka Server:
+			eureka.client.register-with-eureka=false
+			eureka.client.fetch.registry=false
+			
+7. Registering Microservices with Eureka:
+	In every microservice that wants to register:
+		Add Dependency - spring-cloud-starter-netflix-eureka-client
+		Add Config:
+			eureka.client.serviceUrl.defaultZone=http://localhost:8761/eureka
+
+8. Load Balancing
+		In the feign proxy that was configured, remove URL part in the config annotation so it can communicate with Eureka and do load balancing
+			Ex: @FeignClient(name="desiredservice_SpringAppname")
+
+9. API Gateway
+	Authentication, Authorization, logging are done centrally in an API gateway
+	Using Spring Cloud gives effective and simple way to route to APIs and provides cross cutting concerns like Security, Monitoring/Metrics & Resiliency.
+	Add Config:
+		eureka.client.serviceUrl.defaultZone=http://localhost:8761/eureka
+		spring.cloud.gateway.discovery.locator.enabled=true
+		spring.cloud.gateway.discovery.locator.lowerCaseServiceId=true - for lowercasing the service name in url matching
+	Commenting the  gateway discovery we can write our custom routing paths for incoming request matching
+		Create an @configuration annotated apigatewayconfig class
+		Add a @bean method that returns a RouteLocator and accepts RouteLocatorBuilder
+		In this method, using the RouteLocatorBuilder.routes.route(Function) we can match requests on any request attributes like header, param, path, method... and even map and rewrite the path too using predicates and filters
+	Gateway integrates with  Spring cloud Discovery client, hence provides Load balancing
+	Logging or security filters can be applied in global level by creating a filter class that implements GlobalFilter
+
+10. Circuit Breaker - Resilience4j
+	In a call\Request chain between microservices, if any microservice is slow or down it impacts entire chain
+	A fallback response and Circuit breaker can be implemented instead of bombarding the slow\downed service
+	A retry before falling back can be done
+	Rate limiting can be done too
+	Impl:
+		Add dependencies - spring-boot-starter-aop,resilience4j-spring-boot2
+		Can use @Retry to config retry on any controller method
+			@Retry(name = "any_Name", fallbackMethod = "any_method_name")
+			and Define the any_method_name with a parameter <? extends throwable>			
+		Possible Properties:
+			resilience4j.retry.instances.any_Name.maxRetryAttempts=4
+			resilience4j.retry.instances.any_Name.waitDuration=2s
+			resilience4j.retry.instances.any_Name.enableExponentialBackoff=true
+		Can use Circuit Breaker pattern  using :
+			@CircuitBreaker(name = "any_Name", fallbackMethod = "any_method_name")
+			Circuit is in closed state initially, till all requests starts failing
+			It changes to open state once the failureRateThreshold is crossed
+			After a wait(waitDurationInOpenState) it will go to half-open state, sending only small amount of requests to the intended method
+			If succeeded it will close again. Else it will go back to open state
+		Ratelimiting:
+			Setting a limit on the incoming request traffic within defined bounds like 200calls/10seconds
+			@RateLimiter(name = "any_Name")
+			Few Properties:
+				resilience4j.ratelimiter.instances.random.limitForPeriod: 2
+				resilience4j.ratelimiter.instances.random.limitRefreshPeriod: 20s
+		Bulkhead:
+			Setting a limit on the concurrent incoming request traffic within defined bounds
+			@Bulkhead(name = "any_Name")
+				resilience4j.bulkhead.instances.random.maxConcurrentCalls=10
+		For more Info: https://resilience4j.readme.io/docs/getting-started-3 - Spring boot 2 section
+			
+Reference:
+https://github.com/in28minutes/spring-microservices-v2/blob/main/03.microservices/01-step-by-step-changes/microservices-v2-1.md
+
